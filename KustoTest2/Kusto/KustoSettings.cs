@@ -32,5 +32,17 @@ namespace KustoTest2.Kusto
                 _clusterUrl = value;
             }
         }
+        public SyncSettings[] Tables { get; set; }
+        
+    }
+
+    public class SyncSettings
+    {
+        public string Query { get; set; }
+        public string Model { get; set; }
+        public string DocDb { get; set; }
+        public string Collection { get; set; }
+        public bool ClearTarget { get; set; } = false;
+        public bool SplitByDc { get; set; }
     }
 }

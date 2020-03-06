@@ -401,11 +401,14 @@
     <Compile Include="KV\KeyVaultBuilder.cs" />
     <Compile Include="KV\VaultSettings.cs" />
     <Compile Include="Models\CopaConfig.cs" />
+    <Compile Include="Models\DcRank.cs" />
     <Compile Include="Models\Device.cs" />
     <Compile Include="Models\DeviceAssociation.cs" />
+    <Compile Include="Models\DeviceLocation.cs" />
     <Compile Include="Models\Enums.cs" />
     <Compile Include="Models\PowerCapacity.cs" />
     <Compile Include="Models\PowerDevice.cs" />
+    <Compile Include="Models\PowerDeviceEvent.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage\BlobClient.cs" />
@@ -420,9 +423,25 @@
     <None Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="KustoQueries\hierarchy_details.kql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="KustoQueries\dc_hierarchy.kql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="KustoQueries\device.kql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="KustoQueries\event.kql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="KustoQueries\DC.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>

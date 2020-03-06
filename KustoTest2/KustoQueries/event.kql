@@ -5,4 +5,5 @@
 ZenonEventRaw
 | project TimeStamp = datetime_add("millisecond", Time_milli, fromUnixTime(Time_s)), DataCenterName, DataPoint, Status, Value
 | where TimeStamp > ago(1h)
-| order by TimeStamp asc
+| order by TimeStamp desc
+| take 500000

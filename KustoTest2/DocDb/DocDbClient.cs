@@ -26,7 +26,7 @@ namespace KustoTest2.DocDb
         private readonly ILogger<DocDbClient> _logger;
         private readonly FeedOptions _feedOptions;
 
-
+        public Database Database { get; private set; }
         public DocumentCollection Collection { get; private set; }
         public DocumentClient Client { get; }
 
@@ -52,22 +52,26 @@ namespace KustoTest2.DocDb
                     ContractResolver = new CamelCasePropertyNamesContractResolver()
                 });
 
-            var database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
-            Collection = Client.CreateDocumentCollectionQuery(database.SelfLink).Where(c => c.Id == _settings.Collection).AsEnumerable().First();
+            Database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
+            Collection = Client.CreateDocumentCollectionQuery(Database.SelfLink).Where(c => c.Id == _settings.Collection).AsEnumerable().First();
             _feedOptions = new FeedOptions() { PopulateQueryMetrics = _settings.CollectMetrics };
 
             _logger.LogInformation($"Connected to doc db '{Collection.SelfLink}'");
         }
 
-        public async Task SwitchCollection(string collectionName, params string[] partitionKeyPaths)
+        public async Task SwitchCollection(string dbName, string collectionName, params string[] partitionKeyPaths)
         {
-            if (Collection.Id == collectionName)
+            _settings.Db = dbName;
+            _settings.Collection = collectionName;
+
+            if (Collection?.Id == collectionName)
             {
                 return;
             }
 
-            var database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
-            Collection = Client.CreateDocumentCollectionQuery(database.SelfLink).Where(c => c.Id == collectionName).AsEnumerable().FirstOrDefault();
+            Database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
+            Collection = Client.CreateDocumentCollectionQuery(Database.SelfLink)
+                .Where(c => c.Id == _settings.Collection).AsEnumerable().FirstOrDefault();
             if (Collection == null)
             {
                 var partition = new PartitionKeyDefinition();
@@ -85,7 +89,7 @@ namespace KustoTest2.DocDb
 
                 try
                 {
-                    await Client.CreateDocumentCollectionAsync(database.SelfLink, new DocumentCollection()
+                    await Client.CreateDocumentCollectionAsync(Database.SelfLink, new DocumentCollection()
                     {
                         Id = collectionName,
                         PartitionKey = partition
@@ -97,7 +101,7 @@ namespace KustoTest2.DocDb
                     throw;
                 }
 
-                Collection = Client.CreateDocumentCollectionQuery(database.SelfLink).Where(c => c.Id == collectionName).AsEnumerable().FirstOrDefault();
+                Collection = Client.CreateDocumentCollectionQuery(Database.SelfLink).Where(c => c.Id == collectionName).AsEnumerable().FirstOrDefault();
                 _logger.LogInformation("Created collection {0} in {1}/{2}", collectionName, _settings.Account, _settings.Db);
             }
 
@@ -283,10 +287,10 @@ namespace KustoTest2.DocDb
                 var feedOptions = new FeedOptions() { EnableCrossPartitionQuery = true };
 
                 StoredProcedure bulkDeleteSp = Client.CreateStoredProcedureQuery(Collection.SelfLink)
-                    .AsEnumerable().FirstOrDefault(sp => sp.Id == "bulkDeleteSproc");
+                    .AsEnumerable().FirstOrDefault(sp => sp.Id == "bulkDelete");
                 if (bulkDeleteSp == null)
                 {
-                    throw new Exception("stored procedure with name 'bulkDeleteSproc' need to be deployed");
+                    throw new Exception("stored procedure with name 'bulkDelete' need to be deployed");
                 }
 
                 var response = await Client.ExecuteStoredProcedureAsync<string>(

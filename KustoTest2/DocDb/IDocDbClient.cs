@@ -2,8 +2,6 @@
 using Microsoft.Azure.Documents.Client;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +12,7 @@ namespace KustoTest2.DocDb
     /// </summary>
     public interface IDocDbClient : IDisposable
     {
+        Database Database { get; }
         DocumentCollection Collection { get; }
         DocumentClient Client { get; }
 
@@ -23,7 +22,7 @@ namespace KustoTest2.DocDb
         /// <param name="collectionName"></param>
         /// <param name="partitionKeyPaths"></param>
         /// <returns></returns>
-        Task SwitchCollection(string collectionName, params string[] partitionKeyPaths);
+        Task SwitchCollection(string dbName, string collectionName, params string[] partitionKeyPaths);
 
         /// <summary>
         /// count records across partitions

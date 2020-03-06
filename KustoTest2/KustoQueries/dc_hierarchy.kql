@@ -1,2 +1,3 @@
 ﻿DCHierarchy2
-| order by DataCenterCode asc, Colocation asc, Raw asc, Rack asc
+| where DataCenterCode=="{0}"
+| order by DataCenterCode asc, Colocation asc, Row asc, Rack asc
