@@ -153,6 +153,20 @@ namespace KustoTest2
                         }
                     }, cancellationToken);
                     break;
+                case nameof(DataCenter):
+                    _logger.LogInformation($"synchronizing {nameof(DataCenter)}");
+                    await _kustoClient.ExecuteQuery<DataCenter>(query, async (list) =>
+                    {
+                        if (list?.Any() == true)
+                        {
+                            var totalAdded = await Ingest(list);
+                            totalIngested += totalAdded;
+                            _logger.LogInformation($"{nameof(DataCenter)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
+                        }
+                    }, cancellationToken);
+                    break;
+                default:
+                    throw new NotSupportedException($"model {syncSettings.Model} is not supported");
             }
 
             return totalIngested;

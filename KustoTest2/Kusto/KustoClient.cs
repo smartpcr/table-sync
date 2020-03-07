@@ -149,10 +149,10 @@ namespace KustoTest2.Kusto
 
             var propMappings = new Dictionary<int, (PropertyInfo prop, Func<object, object> converter)>();
             var fieldTable = reader.GetSchemaTable();
-            foreach(DataColumn col in fieldTable.Columns)
-            {
-                _logger.LogInformation(col.ColumnName);
-            }
+            //foreach(DataColumn col in fieldTable.Columns)
+            //{
+            //    _logger.LogInformation(col.ColumnName);
+            //}
             for (var i = 0; i < fieldTable.Rows.Count; i++)
             {
                 var fieldName = (string)fieldTable.Rows[i]["ColumnName"];
@@ -226,6 +226,18 @@ namespace KustoTest2.Kusto
             if (tgtType == typeof(bool) && srcType == typeof(SByte))
             {
                 Func<object, object> converter = s => Convert.ChangeType(s, tgtType);
+                return converter;
+            }
+            if (tgtType == typeof(string[]))
+            {
+                Func<object, object> converter = s =>
+                {
+                    var stringValue = s.ToString().Trim().Trim(new[] { '[', ']' });
+                    var items = stringValue.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(a => a.Trim().Trim(new[] { '"' }).Trim())
+                        .Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
+                    return items;
+                };
                 return converter;
             }
 
