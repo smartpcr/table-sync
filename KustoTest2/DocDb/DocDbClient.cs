@@ -312,8 +312,9 @@ namespace KustoTest2.DocDb
                     deleted = jsonObj.Value<int>("deleted");
                     continueation = jsonObj.Value<bool>("continuation");
                 }
+                _logger.LogInformation($"total of {totalDeleted} records are deleted from collection: {Collection.Id}");
             }
-            catch (DocumentClientException e)
+            catch (Exception e)
             {
                 _logger.LogError(
                     e,
