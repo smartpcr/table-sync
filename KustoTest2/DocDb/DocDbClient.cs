@@ -299,10 +299,10 @@ namespace KustoTest2.DocDb
                 int totalDeleted = 0;
                 var jsonObj = JObject.Parse(response);
                 var deleted = jsonObj.Value<int>("deleted");
+                totalDeleted += deleted;
                 var continueation = jsonObj.Value<bool>("continuation");
                 while (continueation)
                 {
-                    totalDeleted += deleted;
                     _logger.LogInformation($"deleting...{totalDeleted}");
 
                     response = await Client.ExecuteStoredProcedureAsync<string>(
@@ -310,6 +310,7 @@ namespace KustoTest2.DocDb
                         new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) });
                     jsonObj = JObject.Parse(response);
                     deleted = jsonObj.Value<int>("deleted");
+                    totalDeleted += deleted;
                     continueation = jsonObj.Value<bool>("continuation");
                 }
                 _logger.LogInformation($"total of {totalDeleted} records are deleted from collection: {Collection.Id}");

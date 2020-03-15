@@ -17,6 +17,7 @@ namespace KustoTest2.Models
         public string PhaseName { get; set; }
         public string CoolingType { get; set; }
         public string HVACType { get; set; }
-        public string MSAssetId { get; set; }
+        public double MSAssetID { get; set; }
+        public string DcGeneration { get; set; }
     }
 }

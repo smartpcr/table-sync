@@ -167,6 +167,10 @@ namespace KustoTest2.Kusto
                     }
                     propMappings.Add(i, (property, converter));
                 }
+                else
+                {
+                    _logger.LogWarning($"Missing mapping for field: {fieldName}");
+                }
             }
             return propMappings;
         }
