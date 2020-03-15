@@ -2,16 +2,21 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Text.Json.Serialization;
+using Newtonsoft.Json.Converters;
 
 namespace KustoTest2.Models
 {
     public class PowerDevice : Device
     {
+        [JsonConverter(typeof(StringEnumConverter))]
         public DeviceType DeviceType { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
         public State DeviceState { get; set; }
         public string Hierarchy { get; set; }
         public string ColoName { get; set; }
         public long ColoId { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
         public PowerCapacity DevicePowerCapacity { get; set; }
         public double? AmpRating { get; set; }
         public double? VoltageRating { get; set; }
@@ -28,6 +33,7 @@ namespace KustoTest2.Models
         public double? DeRatingFactor { get; set; }
         public string PanelName { get; set; }
         [EnumDataType(typeof(CommunicationProtocol))]
+        [JsonConverter(typeof(StringEnumConverter))]
         public CommunicationProtocol CopaConfigType { get; set; }
         public CopaConfig CopaConfig { get; set; }
         public string Location { get; set; }
@@ -36,6 +42,7 @@ namespace KustoTest2.Models
         public List<DeviceAssociation> DirectUpstreamDeviceList { get; set; }
         public List<DeviceAssociation> DirectDownstreamDeviceList { get; set; }
         public bool IsMonitorable { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
         public Tag Tags { get; set; }
         public double? Amperage { get; set; }
         public double? Voltage { get; set; }

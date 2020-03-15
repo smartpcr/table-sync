@@ -280,39 +280,93 @@ namespace KustoTest2.DocDb
 
         public async Task ClearAll(CancellationToken cancel = default)
         {
-            // this is slow, use sp to do bulk delete
+            var idsToDelete = new List<string>();
+            var feedOptions = new FeedOptions() { EnableCrossPartitionQuery = true };
+            StoredProcedure bulkDeleteSp = Client.CreateStoredProcedureQuery(Collection.SelfLink)
+                    .AsEnumerable().FirstOrDefault(sp => sp.Id == "bulkDelete");
+            if (bulkDeleteSp == null)
+            {
+                throw new Exception("stored procedure with name 'bulkDelete' need to be deployed");
+            }
+            int totalDeleted = 0;
+
             try
             {
-                var idsToDelete = new List<string>();
-                var feedOptions = new FeedOptions() { EnableCrossPartitionQuery = true };
-
-                StoredProcedure bulkDeleteSp = Client.CreateStoredProcedureQuery(Collection.SelfLink)
-                    .AsEnumerable().FirstOrDefault(sp => sp.Id == "bulkDelete");
-                if (bulkDeleteSp == null)
+                // check if partition key exists, assumes single partition key
+                var partitionKey = Collection.PartitionKey?.Paths.FirstOrDefault();
+                if (!string.IsNullOrEmpty(partitionKey))
                 {
-                    throw new Exception("stored procedure with name 'bulkDelete' need to be deployed");
-                }
+                    partitionKey = partitionKey.TrimStart(new[] { '/' }).Trim();
+                    _logger.LogInformation($"collection has partition key: {partitionKey}");
 
-                var response = await Client.ExecuteStoredProcedureAsync<string>(
+                    var getPartitionKeysQuery = Client.CreateDocumentQuery<string>(
+                         Collection.SelfLink,
+                         new SqlQuerySpec($"select distinct c.{partitionKey} from c"),
+                         feedOptions)
+                         .AsDocumentQuery();
+                    var partitionKeyValues = new List<string>();
+                    while (getPartitionKeysQuery.HasMoreResults)
+                    {
+                        var partitionKeyResponse = await getPartitionKeysQuery.ExecuteNextAsync<string>(cancel);
+                        partitionKeyValues.AddRange(partitionKeyResponse);
+                    }
+                    _logger.LogInformation($"total of {partitionKeyValues.Count} partition key values found in collection");
+
+                    foreach (var partitionKeyValue in partitionKeyValues)
+                    {
+                        _logger.LogInformation($"deleting documents from partition: {partitionKeyValue}");
+
+                        var response = await Client.ExecuteStoredProcedureAsync<string>(
+                            bulkDeleteSp.SelfLink,
+                            new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) },
+                            new { query = $"select * from c where c.{partitionKey} = '{partitionKeyValue}'" });
+                        var jsonObj = JObject.Parse(response);
+                        var deleted = jsonObj.Value<int>("deleted");
+                        totalDeleted += deleted;
+                        var continueation = jsonObj.Value<bool>("continuation");
+                        while (continueation)
+                        {
+                            _logger.LogInformation($"deleting...{totalDeleted}");
+
+                            response = await Client.ExecuteStoredProcedureAsync<string>(
+                                bulkDeleteSp.SelfLink,
+                                new RequestOptions() { PartitionKey = new PartitionKey(partitionKeyValue) },
+                                new { query = $"select * from c where c.{partitionKey} = '{partitionKeyValue}'" });
+                            jsonObj = JObject.Parse(response);
+                            deleted = jsonObj.Value<int>("deleted");
+                            totalDeleted += deleted;
+                            continueation = jsonObj.Value<bool>("continuation");
+                        }
+                    }
+                }
+                else
+                {
+                    var response = await Client.ExecuteStoredProcedureAsync<string>(
                     bulkDeleteSp.SelfLink,
-                    new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) });
-                int totalDeleted = 0;
-                var jsonObj = JObject.Parse(response);
-                var deleted = jsonObj.Value<int>("deleted");
-                totalDeleted += deleted;
-                var continueation = jsonObj.Value<bool>("continuation");
-                while (continueation)
-                {
-                    _logger.LogInformation($"deleting...{totalDeleted}");
+                    new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) },
+                    new { query = "select * from c" });
 
-                    response = await Client.ExecuteStoredProcedureAsync<string>(
-                        bulkDeleteSp.SelfLink,
-                        new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) });
-                    jsonObj = JObject.Parse(response);
-                    deleted = jsonObj.Value<int>("deleted");
+                    var jsonObj = JObject.Parse(response);
+                    var deleted = jsonObj.Value<int>("deleted");
                     totalDeleted += deleted;
-                    continueation = jsonObj.Value<bool>("continuation");
+                    var continueation = jsonObj.Value<bool>("continuation");
+                    while (continueation)
+                    {
+                        _logger.LogInformation($"deleting...{totalDeleted}");
+
+                        response = await Client.ExecuteStoredProcedureAsync<string>(
+                            bulkDeleteSp.SelfLink,
+                            new RequestOptions() { PartitionKey = new PartitionKey(Undefined.Value) });
+                        jsonObj = JObject.Parse(response);
+                        deleted = jsonObj.Value<int>("deleted");
+                        totalDeleted += deleted;
+                        continueation = jsonObj.Value<bool>("continuation");
+                    }
                 }
+
+
+
+
                 _logger.LogInformation($"total of {totalDeleted} records are deleted from collection: {Collection.Id}");
             }
             catch (Exception e)
