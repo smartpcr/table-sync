@@ -149,7 +149,7 @@ namespace KustoTest2.DocDb
             }
         }
 
-        public async Task<int> UpsertObjects(List<object> list, CancellationToken cancel = default)
+        public async Task<int> UpsertObjects(List<JObject> list, CancellationToken cancel = default)
         {
             Client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 30;
             Client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 9;

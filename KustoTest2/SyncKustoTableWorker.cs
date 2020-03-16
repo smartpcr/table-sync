@@ -11,6 +11,10 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace KustoTest2
 {
@@ -27,6 +31,7 @@ namespace KustoTest2
         private readonly IDocDbClient _docDbClient;
         private readonly ILogger<SyncKustoTableWorker> _logger;
         private readonly KustoSettings _kustoSettings;
+        private readonly JsonSerializer _jsonSerializer;
 
         public SyncKustoTableWorker(
             IKustoClient kustoClient,
@@ -38,6 +43,15 @@ namespace KustoTest2
             _docDbClient = docDbClient;
             _logger = loggerFactory.CreateLogger<SyncKustoTableWorker>();
             _kustoSettings = configuration.GetConfiguredSettings<KustoSettings>();
+            _jsonSerializer = new JsonSerializer();
+            _jsonSerializer.Converters.Add(new StringEnumConverter());
+            _jsonSerializer.ContractResolver = new DefaultContractResolver()
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+                {
+                    OverrideSpecifiedNames = false
+                }
+            };
         }
 
         public async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -190,7 +204,7 @@ namespace KustoTest2
 
         private async Task<int> Ingest<T>(IEnumerable<T> events)
         {
-            var objs = events.Select(e => (object)e).ToList();
+            var objs = events.Select(e => JObject.FromObject(e, _jsonSerializer)).ToList();
             return await _docDbClient.UpsertObjects(objs);
         }
     }
