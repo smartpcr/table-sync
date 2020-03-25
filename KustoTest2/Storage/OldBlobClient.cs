@@ -88,14 +88,11 @@ namespace KustoTest2.Storage
 
         private async Task<TokenCredential> GetTokenCredential(string authorityUrl, string resourceUrl, string clientId, string clientKey)
         {
+            logger.LogInformation($"building storage credential with token expiration renewal callback");
             var authenticationContext = new AuthenticationContext(authorityUrl);
-            var authenticationResult = await authenticationContext
-                .AcquireTokenAsync(resourceUrl, new ClientCredential(clientId, clientKey));
-            var accessToken = authenticationResult.AccessToken;
-
             var state = new Tuple<AuthenticationContext, string, string, string>(authenticationContext, resourceUrl, clientId, clientKey);
             var tokenAndFrequency = await RenewTokenAsync(state, new CancellationToken());
-            var tokenCredential = new TokenCredential(accessToken, RenewTokenAsync, state, tokenAndFrequency.Frequency.Value);
+            var tokenCredential = new TokenCredential(tokenAndFrequency.Token, RenewTokenAsync, state, tokenAndFrequency.Frequency.Value);
             return tokenCredential;
         }
 
@@ -113,6 +110,7 @@ namespace KustoTest2.Storage
             var clientId = passingState.Item3;
             var clientKey = passingState.Item4;
 
+            logger.LogInformation($"get aad access token for client {clientId} and scope: {resourceUrl}");
             var authResult = await authContext.AcquireTokenAsync(resourceUrl, new ClientCredential(clientId, clientKey));
             var accessToken = authResult.AccessToken;
 
@@ -120,6 +118,7 @@ namespace KustoTest2.Storage
             var next = (authResult.ExpiresOn - DateTimeOffset.UtcNow) - TimeSpan.FromMinutes(5);
             if (next.Ticks < 0)
             {
+                logger.LogInformation("Token expired");
                 next = default(TimeSpan);
             }
 
