@@ -51,7 +51,7 @@ namespace KustoTest2.Storage
             _logger.LogInformation($"trying to access blob using msi...");
             try
             {
-                var containerClient = new BlobContainerClient(new Uri(_blobSettings.ContainerEndpoint), new DefaultAzureCredential());
+                var containerClient = new BlobContainerClient(_blobSettings.ContainerEndpoint, new DefaultAzureCredential());
                 containerClient.CreateIfNotExists();
 
                 TryRecreateTestBlob(containerClient);
@@ -78,7 +78,7 @@ namespace KustoTest2.Storage
                 var authBuilder = new AadAuthBuilder(_aadSettings);
                 var accessToken = authBuilder.GetAccessTokenAsync("https://storage.azure.com/").GetAwaiter().GetResult();
                 var tokenCredential = new ClientSecretCredential(_aadSettings.TenantId, _aadSettings.ClientId, accessToken);
-                var containerClient = new BlobContainerClient(new Uri(_blobSettings.ContainerEndpoint), tokenCredential);
+                var containerClient = new BlobContainerClient(_blobSettings.ContainerEndpoint, tokenCredential);
                 containerClient.CreateIfNotExists();
 
                 TryRecreateTestBlob(containerClient);

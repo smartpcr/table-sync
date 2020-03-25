@@ -35,13 +35,13 @@ namespace KustoTest2
                 })
                 .UseConsoleLifetime();
 
-            using (var host = builder.Build()) {
-                using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
-                {
-                    await app.ExecuteAsync(new CancellationToken());
-                }
-            }
-
+            //using (var host = builder.Build()) {
+            //    using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
+            //    {
+            //        await app.ExecuteAsync(new CancellationToken());
+            //    }
+            //}
+            await builder.RunConsoleAsync();
         }
 
         private static void ConfigureServices(IServiceCollection services)
@@ -73,10 +73,12 @@ namespace KustoTest2
             services.AddAppInsights(config);
 
             // contract implementation
-            services.AddSingleton<IBlobClient, BlobClient>();
+            services.AddSingleton<IBlobClient, OldBlobClient>();
             services.AddSingleton<IDocDbClient, DocDbClient>();
             services.AddSingleton<IKustoClient, KustoClient>();
             services.TryAddSingleton<SyncKustoTableWorker>();
+
+            services.AddHostedService<PingBlobWorker>();
         }
     }
 }

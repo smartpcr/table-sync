@@ -410,12 +410,14 @@
     <Compile Include="Models\PowerCapacity.cs" />
     <Compile Include="Models\PowerDevice.cs" />
     <Compile Include="Models\PowerDeviceEvent.cs" />
+    <Compile Include="PingBlobWorker.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage\BlobClient.cs" />
     <Compile Include="Storage\BlobContainerFactory.cs" />
     <Compile Include="Storage\BlobStorageSettings.cs" />
     <Compile Include="Storage\IBlobClient.cs" />
+    <Compile Include="Storage\OldBlobClient.cs" />
     <Compile Include="SyncKustoTableWorker.cs" />
   </ItemGroup>
   <ItemGroup>
