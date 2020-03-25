@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Converters;
 
 namespace KustoTest2.Models
 {
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum SensorType
     {
         [Description("Geist Sensor")]
@@ -15,18 +18,21 @@ namespace KustoTest2.Models
         WD1200
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum SensorVersion
     {
         GT3HD,
         GTHD
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum SensorLocation
     {
         InDoor,
         OutDoor
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum SensorPosition
     {
         WatchDog,
@@ -36,6 +42,7 @@ namespace KustoTest2.Models
         Rear
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [DefaultValue(IC)]
     public enum SiteType
     {
@@ -43,6 +50,7 @@ namespace KustoTest2.Models
         NonIC
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [DefaultValue(Hierarchy)]
     public enum OnboardingMode
     {
@@ -53,7 +61,7 @@ namespace KustoTest2.Models
         [Description("Mechanical Onboarding")] Mechanical = 3,
     }
 
-    [Flags]
+    [Flags][JsonConverter(typeof(StringEnumConverter))]
     public enum DeviceType : long
     {
         [Description("Unknown")]
@@ -130,6 +138,7 @@ namespace KustoTest2.Models
         ParallelPanel = 17179869184
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum BreakerType
     {
         [Description("MainBreaker")]
@@ -138,6 +147,7 @@ namespace KustoTest2.Models
         OutputBreaker
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [DefaultValue(Missing)]
     public enum State
     {
@@ -159,6 +169,7 @@ namespace KustoTest2.Models
         StandBy
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [DefaultValue(Primary)]
     public enum AssociationType
     {
@@ -172,6 +183,7 @@ namespace KustoTest2.Models
         Maintenance = 3
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [DefaultValue(None)]
     public enum CommunicationProtocol
     {
@@ -182,6 +194,7 @@ namespace KustoTest2.Models
         BACnet = 2
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     [Flags]
     public enum Tag
     {

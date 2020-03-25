@@ -149,7 +149,7 @@ namespace KustoTest2.DocDb
             }
         }
 
-        public async Task<int> UpsertObjects(List<object> list, CancellationToken cancel = default)
+        public async Task<int> UpsertObjects(List<JObject> list, CancellationToken cancel = default)
         {
             Client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 30;
             Client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 9;
@@ -280,7 +280,6 @@ namespace KustoTest2.DocDb
 
         public async Task ClearAll(CancellationToken cancel = default)
         {
-            var idsToDelete = new List<string>();
             var feedOptions = new FeedOptions() { EnableCrossPartitionQuery = true };
             StoredProcedure bulkDeleteSp = Client.CreateStoredProcedureQuery(Collection.SelfLink)
                     .AsEnumerable().FirstOrDefault(sp => sp.Id == "bulkDelete");
@@ -301,7 +300,7 @@ namespace KustoTest2.DocDb
 
                     var getPartitionKeysQuery = Client.CreateDocumentQuery<string>(
                          Collection.SelfLink,
-                         new SqlQuerySpec($"select distinct c.{partitionKey} from c"),
+                         new SqlQuerySpec($"select distinct value(c.{partitionKey}) from c"),
                          feedOptions)
                          .AsDocumentQuery();
                     var partitionKeyValues = new List<string>();

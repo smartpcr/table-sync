@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace KustoTest2.DocDb
 {
@@ -47,7 +48,7 @@ namespace KustoTest2.DocDb
         /// <param name="cancel"></param>
         /// <typeparam name="T"></typeparam>
         /// <returns></returns>
-        Task<int> UpsertObjects(List<object> list, CancellationToken cancel = default);
+        Task<int> UpsertObjects(List<JObject> list, CancellationToken cancel = default);
 
         /// <summary>
         /// Execute a SQL query to retrieve matching strongly-typed objects from the store
