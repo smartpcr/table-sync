@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using KustoTest2.Aad;
 using KustoTest2.Config;
+using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -33,7 +34,7 @@ namespace KustoTest2.Storage
             logger.LogInformation($"Retrieving access token for aad client: {aadSettings.ClientId}");
             var tokenCredential = GetTokenCredential(
                 aadSettings.Authority,
-                BlobStorageSettings.StorageResourceUrl,
+                $"https://{storageSettings.Account}.blob.core.windows.net/",
                 aadSettings.ClientId,
                 clientSecretOrCert.secret).GetAwaiter().GetResult();
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
@@ -72,13 +73,21 @@ namespace KustoTest2.Storage
 
         public async Task UploadAsync(string blobFolder, string blobName, string blobContent, CancellationToken cancellationToken)
         {
-            var blobPath = !string.IsNullOrEmpty(blobFolder) ? $"{blobFolder}/{blobName}" : blobName;
-            logger.LogInformation($"creating {blobPath}...");
-            var container = blobClient.GetContainerReference(storageSettings.Container);
-            container.CreateIfNotExists();
-            var blob = container.GetBlockBlobReference(blobPath);
-            await blob.UploadTextAsync(blobContent, cancellationToken);
-            logger.LogInformation($"uploaded blob: {blobPath}");
+            try
+            {
+                var blobPath = !string.IsNullOrEmpty(blobFolder) ? $"{blobFolder}/{blobName}" : blobName;
+                logger.LogInformation($"creating {blobPath}...");
+                var container = blobClient.GetContainerReference(storageSettings.Container);
+                container.CreateIfNotExists();
+                var blob = container.GetBlockBlobReference(blobPath);
+                await blob.UploadTextAsync(blobContent, cancellationToken);
+                logger.LogInformation($"uploaded blob: {blobPath}");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "failed");
+				throw;
+            }
         }
 
         public Task UploadBatchAsync<T>(string blobFolder, Func<T, string> getName, IList<T> list, CancellationToken cancellationToken)
@@ -89,6 +98,10 @@ namespace KustoTest2.Storage
         private async Task<TokenCredential> GetTokenCredential(string authorityUrl, string resourceUrl, string clientId, string clientKey)
         {
             logger.LogInformation($"building storage credential with token expiration renewal callback");
+
+            //var tokenProvider = new AzureServiceTokenProvider();
+            //var accessToken = await tokenProvider.GetAccessTokenAsync(resourceUrl);
+            //return new TokenCredential(accessToken);
             var authenticationContext = new AuthenticationContext(authorityUrl);
             var state = new Tuple<AuthenticationContext, string, string, string>(authenticationContext, resourceUrl, clientId, clientKey);
             var tokenAndFrequency = await RenewTokenAsync(state, new CancellationToken());
@@ -112,7 +125,6 @@ namespace KustoTest2.Storage
 
             logger.LogInformation($"get aad access token for client {clientId} and scope: {resourceUrl}");
             var authResult = await authContext.AcquireTokenAsync(resourceUrl, new ClientCredential(clientId, clientKey));
-            var accessToken = authResult.AccessToken;
 
             // Renew the token 5 minutes before it expires.
             var next = (authResult.ExpiresOn - DateTimeOffset.UtcNow) - TimeSpan.FromMinutes(5);

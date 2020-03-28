@@ -35,7 +35,7 @@ namespace KustoTest2
                 var blobFolder = DateTime.Now.ToString("yyyy/MM/dd/HH/mm");
                 await blobClient.UploadAsync(blobFolder, blobName, JsonConvert.SerializeObject(payload), stoppingToken);
 
-                await Task.Delay(TimeSpan.FromMinutes(30));
+                await Task.Delay(TimeSpan.FromSeconds(10));
             }
         }
     }
