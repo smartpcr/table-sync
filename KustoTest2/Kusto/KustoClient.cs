@@ -49,7 +49,21 @@ namespace KustoTest2.Kusto
                 _kustoSettings.DbName,
                 query,
                 new ClientRequestProperties() { ClientRequestId = Guid.NewGuid().ToString() });
-            await Read<T>(reader, onBatchReceived, cancellationToken, batchSize);
+            await Read(reader, onBatchReceived, cancellationToken, batchSize);
+        }
+
+        public async Task ExecuteQuery(
+            Type entityType,
+            string query,
+            Func<IList<object>, Task> onBatchReceived,
+            CancellationToken cancellationToken = default,
+            int batchSize = 1000)
+        {
+            var reader = await _queryClient.ExecuteQueryAsync(
+                _kustoSettings.DbName,
+                query,
+                new ClientRequestProperties() { ClientRequestId = Guid.NewGuid().ToString() });
+            await Read(entityType, reader, onBatchReceived, cancellationToken, batchSize);
         }
 
         public async Task<IEnumerable<T>> ExecuteFunction<T>(string functionName, params (string name, string value)[] parameters)
@@ -70,7 +84,7 @@ namespace KustoTest2.Kusto
                 _kustoSettings.DbName,
                 functionName,
                 new ClientRequestProperties(null, functionParameters) { ClientRequestId = Guid.NewGuid().ToString() });
-            await Read<T>(reader, onBatchReceived, cancellationToken, batchSize);
+            await Read(reader, onBatchReceived, cancellationToken, batchSize);
         }
 
         private IEnumerable<T> Read<T>(IDataReader reader)
@@ -126,6 +140,44 @@ namespace KustoTest2.Kusto
             _logger.LogInformation($"total of {output.Count} records retrieved from kusto");
         }
 
+        private async Task Read(Type entityType, IDataReader reader, Func<IList<object>, Task> onBatchReceived, CancellationToken cancellationToken, int batchSize)
+        {
+            var propMappings = BuildFieldMapping(entityType, reader);
+
+            var output = new List<object>();
+            int batchCount = 0;
+            int total = 0;
+            while (reader.Read() && !cancellationToken.IsCancellationRequested)
+            {
+                var instance = Create(entityType, reader, propMappings);
+                output.Add(instance);
+                if (output.Count >= batchSize)
+                {
+                    batchCount++;
+                    total += output.Count;
+                    await onBatchReceived(output);
+                    _logger.LogInformation($"sending batch #{batchCount}, total: {total} records");
+                    output = new List<object>();
+                }
+            }
+            reader?.Dispose();
+
+            if (output.Count > 0 && !cancellationToken.IsCancellationRequested)
+            {
+                batchCount++;
+                total += output.Count;
+                _logger.LogInformation($"sending batch #{batchCount}, count: {total} records");
+                await onBatchReceived(output);
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("kusto query is cancelled");
+            }
+
+            _logger.LogInformation($"total of {output.Count} records retrieved from kusto");
+        }
+
         public void Dispose()
         {
             _adminClient?.Dispose();
@@ -133,7 +185,7 @@ namespace KustoTest2.Kusto
         }
 
         /// <summary>
-        /// ObjectReader&ltT&gt is buggy and only relies FieldInfo then passing nameBasedColumnMapping=true
+        /// ObjectReader is buggy and only relies FieldInfo then passing nameBasedColumnMapping=true
         /// https://msazure.visualstudio.com/_search?action=contents&text=ObjectReader&type=code&lp=custom-Collection&filters=&pageSize=25&result=DefaultCollection%2FOne%2FAzure-Kusto-Service%2FGBdev%2F%2FSrc%2FCommon%2FKusto.Cloud.Platform%2FData%2FTypedDataReader.cs
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -141,8 +193,12 @@ namespace KustoTest2.Kusto
         /// <returns></returns>
         private Dictionary<int, (PropertyInfo prop, Func<object, object> converter)> BuildFieldMapping<T>(IDataReader reader)
         {
-            var type = typeof(T);
-            var constructor = type.GetConstructors().SingleOrDefault(c => c.GetParameters().Count() == 0);
+            return BuildFieldMapping(typeof(T), reader);
+        }
+
+        private Dictionary<int, (PropertyInfo prop, Func<object, object> converter)> BuildFieldMapping(Type type, IDataReader reader)
+        {
+            var constructor = type.GetConstructors().SingleOrDefault(c => !c.GetParameters().Any());
             if (constructor == null)
             {
                 throw new Exception($"type {type.Name} doesn't have parameterless constructor");
@@ -151,7 +207,7 @@ namespace KustoTest2.Kusto
             // handle json property mappings
             var props = type.GetProperties().Where(p => p.CanWrite).ToList();
             var propNameMappings = new Dictionary<string, PropertyInfo>(StringComparer.InvariantCultureIgnoreCase);
-            foreach(var prop in props)
+            foreach (var prop in props)
             {
                 var jsonProp = prop.GetCustomAttribute<JsonPropertyAttribute>();
                 if (jsonProp != null)
@@ -166,10 +222,11 @@ namespace KustoTest2.Kusto
 
             var propMappings = new Dictionary<int, (PropertyInfo prop, Func<object, object> converter)>();
             var fieldTable = reader.GetSchemaTable();
-            //foreach(DataColumn col in fieldTable.Columns)
-            //{
-            //    _logger.LogInformation(col.ColumnName);
-            //}
+            if (fieldTable == null)
+            {
+                throw new InvalidOperationException("Query doesn't return schema info");
+            }
+
             for (var i = 0; i < fieldTable.Rows.Count; i++)
             {
                 var fieldName = (string)fieldTable.Rows[i]["ColumnName"];
@@ -198,7 +255,12 @@ namespace KustoTest2.Kusto
 
         private T Create<T>(IDataReader reader, Dictionary<int, (PropertyInfo prop, Func<object, object> converter)> propMappings)
         {
-            T instance = Activator.CreateInstance<T>();
+            return (T)Create(typeof(T), reader, propMappings);
+        }
+
+        private object Create(Type type, IDataReader reader, Dictionary<int, (PropertyInfo prop, Func<object, object> converter)> propMappings)
+        {
+            var instance = Activator.CreateInstance(type);
             foreach (var idx in propMappings.Keys)
             {
                 var value = reader.GetValue(idx);
@@ -208,7 +270,8 @@ namespace KustoTest2.Kusto
                 if (prop.PropertyType != value.GetType())
                 {
                     var converter = propMappings[idx].converter;
-                    if (converter != null) {
+                    if (converter != null)
+                    {
                         value = converter(value);
                         prop.SetValue(instance, value);
                     }
@@ -216,15 +279,10 @@ namespace KustoTest2.Kusto
                     {
                         try
                         {
-                            if (Nullable.GetUnderlyingType(prop.PropertyType) != null)
-                            {
-                                var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType);
-                                value = Convert.ChangeType(value.ToString(), underlyingType);
-                            }
-                            else
-                            {
-                                value = Convert.ChangeType(value.ToString(), prop.PropertyType);
-                            }
+                            var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType);
+                            value = Convert.ChangeType(
+                                value.ToString(), 
+                                underlyingType != null ? underlyingType : prop.PropertyType);
                             prop.SetValue(instance, value);
                         }
                         catch
@@ -233,7 +291,7 @@ namespace KustoTest2.Kusto
                         }
                     }
                 }
-                else 
+                else
                 {
                     prop.SetValue(instance, value);
                 }
@@ -245,25 +303,27 @@ namespace KustoTest2.Kusto
         {
             if (tgtType.IsEnum && srcType == typeof(string))
             {
-                Func<object, object> converter = s => Enum.Parse(tgtType, (string)s, true);
-                return converter;
+                object Converter(object s) => Enum.Parse(tgtType, (string) s, true);
+                return Converter;
             }
             if (tgtType == typeof(bool) && srcType == typeof(SByte))
             {
-                Func<object, object> converter = s => Convert.ChangeType(s, tgtType);
-                return converter;
+                object Converter(object s) => Convert.ChangeType(s, tgtType);
+                return Converter;
             }
             if (tgtType == typeof(string[]))
             {
-                Func<object, object> converter = s =>
+                object Converter(object s)
                 {
-                    var stringValue = s.ToString().Trim().Trim(new[] { '[', ']' });
-                    var items = stringValue.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(a => a.Trim().Trim(new[] { '"' }).Trim())
-                        .Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
+                    var stringValue = s.ToString().Trim().Trim(new[] {'[', ']'});
+                    var items = stringValue.Split(new[] {','}, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(a => a.Trim().Trim(new[] {'"'}).Trim())
+                        .Where(t => !string.IsNullOrWhiteSpace(t))
+                        .ToArray();
                     return items;
-                };
-                return converter;
+                }
+
+                return Converter;
             }
 
             return null;

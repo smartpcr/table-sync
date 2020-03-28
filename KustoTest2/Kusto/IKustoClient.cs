@@ -13,6 +13,12 @@ namespace KustoTest2.Kusto
             Func<IList<T>, Task> onBatchReceived, 
             CancellationToken cancellationToken = default, 
             int batchSize = 1000);
+        Task ExecuteQuery(
+            Type entityType,
+            string query,
+            Func<IList<object>, Task> onBatchReceived,
+            CancellationToken cancellationToken = default,
+            int batchSize = 1000);
         Task<IEnumerable<T>> ExecuteFunction<T>(string functionName, params (string name, string value)[] parameters);
         Task ExecuteFunction<T>(
             string functionName,

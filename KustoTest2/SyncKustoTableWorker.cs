@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -116,84 +115,22 @@ namespace KustoTest2
         {
             _logger.LogInformation($"running kusto query: \n{query}\n");
             int totalIngested = 0;
-
-            switch (syncSettings.Model)
+            var modelType = typeof(SyncSettings).Assembly.GetTypes()
+                .FirstOrDefault(t => t.Name.Equals(syncSettings.Model));
+            if (modelType == null)
             {
-                case nameof(PowerDevice):
-                    _logger.LogInformation($"synchronizing {nameof(PowerDevice)}");
-                    await _kustoClient.ExecuteQuery<PowerDevice>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(PowerDevice)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                case nameof(PowerDeviceEvent):
-                    _logger.LogInformation($"synchronizing {nameof(PowerDeviceEvent)}");
-                    await _kustoClient.ExecuteQuery<PowerDeviceEvent>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(PowerDeviceEvent)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                case nameof(DcRank):
-                    _logger.LogInformation($"synchronizing {nameof(DcRank)}");
-                    await _kustoClient.ExecuteQuery<DcRank>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(DcRank)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                case nameof(DeviceLocation):
-                    _logger.LogInformation($"synchronizing {nameof(DeviceLocation)}");
-                    await _kustoClient.ExecuteQuery<DeviceLocation>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(DeviceLocation)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                case nameof(DataCenter):
-                    _logger.LogInformation($"synchronizing {nameof(DataCenter)}");
-                    await _kustoClient.ExecuteQuery<DataCenter>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(DataCenter)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                case nameof(DataPoint):
-                    _logger.LogInformation($"synchronizing {nameof(DataPoint)}");
-                    await _kustoClient.ExecuteQuery<DataPoint>(query, async (list) =>
-                    {
-                        if (list?.Any() == true)
-                        {
-                            var totalAdded = await Ingest(list);
-                            totalIngested += totalAdded;
-                            _logger.LogInformation($"{nameof(DataPoint)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
-                        }
-                    }, cancellationToken);
-                    break;
-                default:
-                    throw new NotSupportedException($"model {syncSettings.Model} is not supported");
+                throw new InvalidOperationException($"Failed to find model: {syncSettings.Model}");
             }
+            _logger.LogInformation($"synchronizing {syncSettings.Model}");
+            await _kustoClient.ExecuteQuery(modelType, query, async (list) =>
+            {
+                if (list?.Any() == true)
+                {
+                    var totalAdded = await Ingest(list);
+                    totalIngested += totalAdded;
+                    _logger.LogInformation($"{nameof(PowerDevice)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
+                }
+            }, cancellationToken);
 
             return totalIngested;
         }
@@ -207,11 +144,6 @@ namespace KustoTest2
         {
             _logger.LogInformation($"Clearing cosmos db collection, db: {_docDbClient.Database.Id}, coll: {_docDbClient.Collection.Id}");
             await _docDbClient.ClearAll();
-        }
-
-        private string GenerateTableQuery(string tableName, string sortField, SortDirection sortDirection)
-        {
-            return $"{tableName} | order by {sortField} {sortDirection.ToString().ToLower()}";
         }
 
         private async Task<int> Ingest<T>(IEnumerable<T> events)
