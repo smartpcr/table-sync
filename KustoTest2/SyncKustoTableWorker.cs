@@ -179,6 +179,18 @@ namespace KustoTest2
                         }
                     }, cancellationToken);
                     break;
+                case nameof(DataPoint):
+                    _logger.LogInformation($"synchronizing {nameof(DataPoint)}");
+                    await _kustoClient.ExecuteQuery<DataPoint>(query, async (list) =>
+                    {
+                        if (list?.Any() == true)
+                        {
+                            var totalAdded = await Ingest(list);
+                            totalIngested += totalAdded;
+                            _logger.LogInformation($"{nameof(DataPoint)}: total of {list.Count} raw events found, {totalAdded} mapped device events added");
+                        }
+                    }, cancellationToken);
+                    break;
                 default:
                     throw new NotSupportedException($"model {syncSettings.Model} is not supported");
             }

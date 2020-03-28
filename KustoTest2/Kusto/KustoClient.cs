@@ -3,6 +3,7 @@ using Kusto.Data.Common;
 using KustoTest2.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -147,6 +148,22 @@ namespace KustoTest2.Kusto
                 throw new Exception($"type {type.Name} doesn't have parameterless constructor");
             }
 
+            // handle json property mappings
+            var props = type.GetProperties().Where(p => p.CanWrite).ToList();
+            var propNameMappings = new Dictionary<string, PropertyInfo>(StringComparer.InvariantCultureIgnoreCase);
+            foreach(var prop in props)
+            {
+                var jsonProp = prop.GetCustomAttribute<JsonPropertyAttribute>();
+                if (jsonProp != null)
+                {
+                    propNameMappings.Add(jsonProp.PropertyName, prop);
+                }
+                else
+                {
+                    propNameMappings.Add(prop.Name, prop);
+                }
+            }
+
             var propMappings = new Dictionary<int, (PropertyInfo prop, Func<object, object> converter)>();
             var fieldTable = reader.GetSchemaTable();
             //foreach(DataColumn col in fieldTable.Columns)
@@ -157,6 +174,10 @@ namespace KustoTest2.Kusto
             {
                 var fieldName = (string)fieldTable.Rows[i]["ColumnName"];
                 var property = type.GetProperty(fieldName);
+                if (property == null)
+                {
+                    propNameMappings.TryGetValue(fieldName, out property);
+                }
                 var dataType = (Type)fieldTable.Rows[i]["DataType"];
                 if (property != null)
                 {

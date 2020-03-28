@@ -406,6 +406,7 @@
     <Compile Include="KV\VaultSettings.cs" />
     <Compile Include="Models\CopaConfig.cs" />
     <Compile Include="Models\DataCenter.cs" />
+    <Compile Include="Models\DataPoint.cs" />
     <Compile Include="Models\DcRank.cs" />
     <Compile Include="Models\Device.cs" />
     <Compile Include="Models\DeviceAssociation.cs" />
@@ -428,6 +429,9 @@
     <None Include="App.config" />
     <None Include="ApplicationInsights.config" />
     <None Include="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="KustoQueries\data_point.kql">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="KustoQueries\dc_info.kql">

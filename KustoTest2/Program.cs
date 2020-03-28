@@ -35,13 +35,14 @@ namespace KustoTest2
                 })
                 .UseConsoleLifetime();
 
-            //using (var host = builder.Build()) {
-            //    using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
-            //    {
-            //        await app.ExecuteAsync(new CancellationToken());
-            //    }
-            //}
-            await builder.RunConsoleAsync();
+            using (var host = builder.Build())
+            {
+                using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
+                {
+                    await app.ExecuteAsync(new CancellationToken());
+                }
+            }
+            //await builder.RunConsoleAsync();
         }
 
         private static void ConfigureServices(IServiceCollection services)
