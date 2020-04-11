@@ -4,7 +4,7 @@ namespace KustoTest2.Models
 {
     public class DcRank
     {
-        [JsonProperty("DcName")]
+        [JsonProperty("dcName")]
         public string DataCenterCode { get; set; }
 
         public string Colocation { get; set; }

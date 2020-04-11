@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 namespace KustoTest2.Models
 {
+    using Newtonsoft.Json;
+
     public class DeviceAssociation
     {
         public string DeviceName { get; set; }
@@ -11,6 +13,15 @@ namespace KustoTest2.Models
         {
             return $"[DeviceName: \"{this.DeviceName}\", AssociationType: \"{this.AssociationType}\"]";
         }
+    }
+
+    public class DeviceRelation
+    {
+        public string Name { get; set; }
+        public string DcName { get; set; }
+
+        public List<DeviceAssociation> DirectUpstreamDeviceList { get; set; }
+        public List<DeviceAssociation> DirectDownstreamDeviceList { get; set; }
     }
 
     public class DeviceAssociationComparer : IEqualityComparer<DeviceAssociation>

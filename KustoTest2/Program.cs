@@ -1,7 +1,4 @@
-﻿using Kusto.Data;
-using Kusto.Data.Common;
-using Kusto.Data.Net.Client;
-using KustoTest2.Aad;
+﻿using KustoTest2.Aad;
 using KustoTest2.Config;
 using KustoTest2.DocDb;
 using KustoTest2.Instrumentation;
@@ -37,7 +34,12 @@ namespace KustoTest2
 
             using (var host = builder.Build())
             {
-                using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
+                //using (var app = host.Services.GetRequiredService<SyncKustoTableWorker>())
+                //{
+                //    await app.ExecuteAsync(new CancellationToken());
+                //}
+
+                using (var app = host.Services.GetRequiredService<PopulateDeviceAssociations>())
                 {
                     await app.ExecuteAsync(new CancellationToken());
                 }
@@ -65,6 +67,7 @@ namespace KustoTest2
                 .ConfigureSettings<BlobStorageSettings>()
                 .ConfigureSettings<DocDbSettings>()
                 .ConfigureSettings<KustoSettings>()
+                .ConfigureSettings<DocDbData>()
                 .AddOptions();
 
             // kv client
@@ -78,6 +81,7 @@ namespace KustoTest2
             services.AddSingleton<IDocDbClient, DocDbClient>();
             services.AddSingleton<IKustoClient, KustoClient>();
             services.TryAddSingleton<SyncKustoTableWorker>();
+            services.TryAddSingleton<PopulateDeviceAssociations>();
 
             services.AddHostedService<PingBlobWorker>();
         }

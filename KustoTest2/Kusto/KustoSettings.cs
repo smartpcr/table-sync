@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace KustoTest2.Kusto
+﻿namespace KustoTest2.Kusto
 {
     public enum AuthMode
     {
@@ -44,5 +38,8 @@ namespace KustoTest2.Kusto
         public string Collection { get; set; }
         public bool ClearTarget { get; set; } = false;
         public bool SplitByDc { get; set; }
+
+        public string AlternativeClusterUrl { get; set; }
+        public string AlternativeDb { get; set; }
     }
 }

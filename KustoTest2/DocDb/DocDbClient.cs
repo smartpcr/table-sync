@@ -14,12 +14,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace KustoTest2.DocDb
 {
+    using Config;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;
+
     public sealed class DocDbClient : IDocDbClient
     {
         private readonly DocDbSettings _settings;
@@ -30,18 +33,48 @@ namespace KustoTest2.DocDb
         public DocumentCollection Collection { get; private set; }
         public DocumentClient Client { get; }
 
-        public DocDbClient(
-            IKeyVaultClient kvClient,
-            IOptions<VaultSettings> vaultSettings,
-            IOptions<DocDbSettings> dbSettings,
-            ILogger<DocDbClient> logger)
-        {
-            _settings = dbSettings.Value;
-            _logger = logger;
+        //public DocDbClient(
+        //    IKeyVaultClient kvClient,
+        //    IOptions<VaultSettings> vaultSettings,
+        //    IOptions<DocDbSettings> dbSettings,
+        //    ILogger<DocDbClient> logger)
+        //{
+        //    _settings = dbSettings.Value;
+        //    _logger = logger;
 
-            _logger.LogInformation($"Retrieving auth key '{_settings.AuthKeySecret}' from vault '{vaultSettings.Value.VaultName}'");
+        //    _logger.LogInformation($"Retrieving auth key '{_settings.AuthKeySecret}' from vault '{vaultSettings.Value.VaultName}'");
+        //    var authKey = kvClient.GetSecretAsync(
+        //        vaultSettings.Value.VaultUrl,
+        //        _settings.AuthKeySecret).GetAwaiter().GetResult();
+        //    Client = new DocumentClient(
+        //        _settings.AccountUri,
+        //        authKey.Value.ToSecureString(),
+        //        desiredConsistencyLevel: ConsistencyLevel.Session,
+        //        serializerSettings: new JsonSerializerSettings()
+        //        {
+        //            ContractResolver = new CamelCasePropertyNamesContractResolver()
+        //        });
+
+        //    Database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
+        //    Collection = Client.CreateDocumentCollectionQuery(Database.SelfLink).Where(c => c.Id == _settings.Collection).AsEnumerable().First();
+        //    _feedOptions = new FeedOptions() { PopulateQueryMetrics = _settings.CollectMetrics };
+
+        //    _logger.LogInformation($"Connected to doc db '{Collection.SelfLink}'");
+        //}
+
+        public DocDbClient(
+            IServiceProvider serviceProvider, 
+            ILoggerFactory loggerFactory, 
+            IOptions<DocDbSettings> docDbSettings)
+        {
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            _settings = docDbSettings.Value ?? configuration.GetConfiguredSettings<DocDbSettings>();
+            _logger = loggerFactory.CreateLogger<DocDbClient>();
+            var vaultSettings = configuration.GetConfiguredSettings<VaultSettings>();
+            var kvClient = serviceProvider.GetRequiredService<IKeyVaultClient>();
+            _logger.LogInformation($"Retrieving auth key '{_settings.AuthKeySecret}' from vault '{vaultSettings.VaultName}'");
             var authKey = kvClient.GetSecretAsync(
-                vaultSettings.Value.VaultUrl,
+                vaultSettings.VaultUrl,
                 _settings.AuthKeySecret).GetAwaiter().GetResult();
             Client = new DocumentClient(
                 _settings.AccountUri,
@@ -212,6 +245,54 @@ namespace KustoTest2.DocDb
                 throw;
             }
 
+        }
+
+        public async Task Query<T>(
+            SqlQuerySpec querySpec,
+            Func<List<T>, CancellationToken, Task> onReceived,
+            int batchSize = 1000,
+            FeedOptions feedOptions = null,
+            CancellationToken cancel = default)
+        {
+            try
+            {
+                var output = new List<T>();
+                feedOptions = feedOptions ?? _feedOptions;
+                var query = Client
+                    .CreateDocumentQuery<T>(Collection.SelfLink, querySpec, feedOptions)
+                    .AsDocumentQuery();
+                int totalReceived = 0;
+
+                while (query.HasMoreResults)
+                {
+                    var response = await query.ExecuteNextAsync<T>(cancel);
+                    output.AddRange(response);
+                    if (output.Count >= batchSize)
+                    {
+                        totalReceived += output.Count;
+                        await onReceived(output, cancel);
+                        output=new List<T>();
+                        _logger.LogInformation($"received {totalReceived} docs");
+                    }
+                }
+
+                if (output.Count >= batchSize)
+                {
+                    totalReceived += output.Count;
+                    _logger.LogInformation($"received {totalReceived} docs");
+                    await onReceived(output, cancel);
+                }
+
+                _logger.LogInformation("Query is done");
+            }
+            catch (DocumentClientException e)
+            {
+                _logger.LogError(
+                    e,
+                    $"Unable to Query. DatabaseName={_settings.Db}, CollectionName={_settings.Collection}, Query={querySpec}, FeedOptions={feedOptions}");
+
+                throw;
+            }
         }
 
         public async Task<FeedResponse<T>> QueryInBatches<T>(SqlQuerySpec querySpec, FeedOptions feedOptions = null,

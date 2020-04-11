@@ -4,10 +4,10 @@ namespace KustoTest2.Models
 {
     public class DataCenter
     {
-        [JsonProperty("DcName")]
+        [JsonProperty("dcName")]
         public string DcShortName { get; set; }
 
-        [JsonProperty("DcLongName")]
+        [JsonProperty("dcLongName")]
         public string DcName { get; set; }
         
         public string Region { get; set; }

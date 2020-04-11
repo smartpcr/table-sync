@@ -60,6 +60,13 @@ namespace KustoTest2.DocDb
         /// <exception cref="ArgumentNullException" if querySpec is null></exception>
         Task<IEnumerable<T>> Query<T>(SqlQuerySpec querySpec, FeedOptions feedOptions = null, CancellationToken cancel = default);
 
+        Task Query<T>(
+            SqlQuerySpec querySpec, 
+            Func<List<T>, CancellationToken, Task> onReceived, 
+            int batchSize = 1000,
+            FeedOptions feedOptions = null, 
+            CancellationToken cancel = default);
+
         /// <summary>
         /// use continuation token to query in batches, batch size is stored in <see cref="FeedOptions"/>
         /// </summary>
