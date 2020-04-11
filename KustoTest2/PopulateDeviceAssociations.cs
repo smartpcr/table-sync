@@ -31,7 +31,7 @@ namespace KustoTest2
         private readonly ILogger<PopulateDeviceAssociations> logger;
         private readonly IDocDbClient srcDocDb;
         private readonly IDocDbClient tgtDocDb;
-        private readonly JsonSerializer _jsonSerializer;
+        private readonly JsonSerializer jsonSerializer;
 
         public PopulateDeviceAssociations(IServiceProvider serviceProvider, ILoggerFactory loggerFactory)
         {
@@ -39,23 +39,23 @@ namespace KustoTest2
             tgtDocDb = serviceProvider.GetRequiredService<IDocDbClient>();
 
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-            var docDbData = configuration.GetConfiguredSettings<DocDbData>();
+            var docDbData = configuration.GetConfiguredSettings<CosmosDbRepoSettings>();
             var prop = docDbData.GetType().GetProperties().FirstOrDefault(
                 p => p.GetCustomAttribute<ModelBindAttribute>()?.ModelType == typeof(DeviceRelation));
             if (prop == null)
             {
                 throw new InvalidOperationException($"Missing configuration for type {typeof(DeviceRelation).Name}");
             }
-            var docDbSetting = prop.GetValue(docDbData) as DocDbSettings;
+            var docDbSetting = prop.GetValue(docDbData) as CosmosDbSettings;
 
             srcDocDb = new DocDbClient(
                 serviceProvider,
                 loggerFactory,
-                new OptionsWrapper<DocDbSettings>(docDbSetting));
+                new OptionsWrapper<CosmosDbSettings>(docDbSetting));
 
-            _jsonSerializer = new JsonSerializer();
-            _jsonSerializer.Converters.Add(new StringEnumConverter());
-            _jsonSerializer.ContractResolver = new DefaultContractResolver()
+            jsonSerializer = new JsonSerializer();
+            jsonSerializer.Converters.Add(new StringEnumConverter());
+            jsonSerializer.ContractResolver = new DefaultContractResolver()
             {
                 NamingStrategy = new CamelCaseNamingStrategy()
                 {
@@ -85,7 +85,7 @@ namespace KustoTest2
             CancellationToken token)
         {
             logger.LogInformation($"saving device relations...");
-            var objs = relations.Select(e => JObject.FromObject(e, _jsonSerializer)).ToList();
+            var objs = relations.Select(e => JObject.FromObject(e, jsonSerializer)).ToList();
             await tgt.UpsertObjects(objs, token);
         }
 

@@ -65,9 +65,9 @@ namespace KustoTest2
                 .ConfigureSettings<AadSettings>()
                 .ConfigureSettings<VaultSettings>()
                 .ConfigureSettings<BlobStorageSettings>()
-                .ConfigureSettings<DocDbSettings>()
+                .ConfigureSettings<CosmosDbSettings>()
                 .ConfigureSettings<KustoSettings>()
-                .ConfigureSettings<DocDbData>()
+                .ConfigureSettings<CosmosDbRepoSettings>()
                 .AddOptions();
 
             // kv client
@@ -80,9 +80,11 @@ namespace KustoTest2
             services.AddSingleton<IBlobClient, OldBlobClient>();
             services.AddSingleton<IDocDbClient, DocDbClient>();
             services.AddSingleton<IKustoClient, KustoClient>();
+            services.AddSingleton<CosmosDbRepoFactory>();
+
             services.TryAddSingleton<SyncKustoTableWorker>();
             services.TryAddSingleton<PopulateDeviceAssociations>();
-
+            services.TryAddSingleton<PopulateDeviceGraph>();
             services.AddHostedService<PingBlobWorker>();
         }
     }

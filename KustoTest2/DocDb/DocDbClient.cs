@@ -25,7 +25,7 @@ namespace KustoTest2.DocDb
 
     public sealed class DocDbClient : IDocDbClient
     {
-        private readonly DocDbSettings _settings;
+        private readonly CosmosDbSettings _settings;
         private readonly ILogger<DocDbClient> _logger;
         private readonly FeedOptions _feedOptions;
 
@@ -33,42 +33,13 @@ namespace KustoTest2.DocDb
         public DocumentCollection Collection { get; private set; }
         public DocumentClient Client { get; }
 
-        //public DocDbClient(
-        //    IKeyVaultClient kvClient,
-        //    IOptions<VaultSettings> vaultSettings,
-        //    IOptions<DocDbSettings> dbSettings,
-        //    ILogger<DocDbClient> logger)
-        //{
-        //    _settings = dbSettings.Value;
-        //    _logger = logger;
-
-        //    _logger.LogInformation($"Retrieving auth key '{_settings.AuthKeySecret}' from vault '{vaultSettings.Value.VaultName}'");
-        //    var authKey = kvClient.GetSecretAsync(
-        //        vaultSettings.Value.VaultUrl,
-        //        _settings.AuthKeySecret).GetAwaiter().GetResult();
-        //    Client = new DocumentClient(
-        //        _settings.AccountUri,
-        //        authKey.Value.ToSecureString(),
-        //        desiredConsistencyLevel: ConsistencyLevel.Session,
-        //        serializerSettings: new JsonSerializerSettings()
-        //        {
-        //            ContractResolver = new CamelCasePropertyNamesContractResolver()
-        //        });
-
-        //    Database = Client.CreateDatabaseQuery().Where(db => db.Id == _settings.Db).AsEnumerable().First();
-        //    Collection = Client.CreateDocumentCollectionQuery(Database.SelfLink).Where(c => c.Id == _settings.Collection).AsEnumerable().First();
-        //    _feedOptions = new FeedOptions() { PopulateQueryMetrics = _settings.CollectMetrics };
-
-        //    _logger.LogInformation($"Connected to doc db '{Collection.SelfLink}'");
-        //}
-
         public DocDbClient(
             IServiceProvider serviceProvider, 
             ILoggerFactory loggerFactory, 
-            IOptions<DocDbSettings> docDbSettings)
+            IOptions<CosmosDbSettings> docDbSettings)
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-            _settings = docDbSettings.Value ?? configuration.GetConfiguredSettings<DocDbSettings>();
+            _settings = docDbSettings.Value ?? configuration.GetConfiguredSettings<CosmosDbSettings>();
             _logger = loggerFactory.CreateLogger<DocDbClient>();
             var vaultSettings = configuration.GetConfiguredSettings<VaultSettings>();
             var kvClient = serviceProvider.GetRequiredService<IKeyVaultClient>();
