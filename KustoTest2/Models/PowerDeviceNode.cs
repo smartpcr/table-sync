@@ -6,82 +6,60 @@
 
 namespace KustoTest2.Models
 {
-    using System;
     using System.Collections.Generic;
-    using System.ComponentModel.DataAnnotations;
+    using System.Linq;
+    using System.Reflection;
     using DocDb;
     using Newtonsoft.Json;
-    using Newtonsoft.Json.Converters;
 
     public class PowerDeviceNode : IGremlinVertex
     {
-        public string DeviceName { get; set; }
-        public string DcName { get; set; }
-        public long DcCode { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
-        public OnboardingMode OnboardingMode { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
-        public DeviceType DeviceType { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
-        public State DeviceState { get; set; }
-        public string Hierarchy { get; set; }
-        public string ColoName { get; set; }
-        public long ColoId { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
-        public PowerCapacity DevicePowerCapacity { get; set; }
-        public double? AmpRating { get; set; }
-        public double? VoltageRating { get; set; }
-        public double? KwRating { get; set; }
-        public double? KvaRating { get; set; }
-        public int XCoordination { get; set; }
-        public int YCoordination { get; set; }
-        public string PrimaryParent { get; set; }
-        public string SecondaryParent { get; set; }
-        public string MaintenanceParent { get; set; }
-        public string RedundantDeviceNames { get; set; }
+        public PowerDevice Device { get; set; }
 
-        public double? PowerFactor { get; set; }
-        public double? DeRatingFactor { get; set; }
-        public string PanelName { get; set; }
-        [EnumDataType(typeof(CommunicationProtocol))]
-        [JsonConverter(typeof(StringEnumConverter))]
-        public CommunicationProtocol CopaConfigType { get; set; }
-        public CopaConfig CopaConfig { get; set; }
-        public string Location { get; set; }
-        public string ReservedTiles { get; set; }
-        public string ConsumedTiles { get; set; }
-        public List<DeviceAssociation> DirectUpstreamDeviceList { get; set; }
-        public List<DeviceAssociation> DirectDownstreamDeviceList { get; set; }
-        public bool IsMonitorable { get; set; }
-        [JsonConverter(typeof(StringEnumConverter))]
-        public Tag Tags { get; set; }
-        public double? Amperage { get; set; }
-        public double? Voltage { get; set; }
-        public double? RatedCapacity { get; set; }
-        public double? DeRatedCapacity { get; set; }
-        public string DataType { get; set; }
-        public string ConfiguredObjectType { get; set; }
-        public string DriverName { get; set; }
-        public string ConnectionName { get; set; }
-        public string IpAddress { get; set; }
-        public string PortNumber { get; set; }
-        public string NetAddress { get; set; }
-        public string ProjectName { get; set; }
-        public int UnitId { get; set; }
-
-        public string GetId()
+        [JsonProperty("id")]
+        public string Id
         {
-            return DeviceName;
+            get => Device.DeviceName;
+            set => Device.DeviceName = value;
         }
 
-        public string GetPartition()
+        [JsonProperty("partitionKey")]
+        public string PartitionKey
         {
-            return DcName;
+            get => Device.DcName;
+            set => Device.DcName = value;
         }
 
-        public string GetLabel()
+        public string Label
         {
-            return DeviceName;
+            get => Device.DeviceName;
+            set => Device.DeviceName = value;
+        }
+
+
+        public List<PropertyInfo> GetFlattenedProperties()
+        {
+            var props = typeof(PowerDevice).GetProperties()
+                .Where(p => p.CanRead && p.CanWrite)
+                .ToList();
+            return props;
+        }
+
+        public Dictionary<string, string> GetPropertyValues(List<PropertyInfo> props)
+        {
+            var propValues = new Dictionary<string, string>();
+
+            foreach (var prop in props)
+            {
+                var propValue = prop.GetValue(Device);
+                if (propValue != null)
+                {
+                    var camelCasePropName = prop.Name.Substring(0, 1).ToLower() + prop.Name.Substring(1);
+                    propValues.Add(camelCasePropName, propValue.ToString());
+                }
+            }
+
+            return propValues;
         }
     }
 }

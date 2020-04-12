@@ -13,8 +13,12 @@ namespace KustoTest2.DocDb
     using Microsoft.Azure.Documents;
     using Microsoft.Azure.Documents.Client;
 
-    public interface IDocDbRepo<T> where T:class, new()
+    public interface IDocDbRepo<T>: IDisposable where T : class, new()
     {
+        Task<List<T>> QueryAll(CancellationToken cancel);
+
+        Task<List<T>> Query(string whereClause, CancellationToken cancel);
+
         Task Query(
             SqlQuerySpec querySpec,
             Func<List<T>, CancellationToken, Task> onReceived,

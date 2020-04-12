@@ -9,7 +9,9 @@ namespace KustoTest2.DocDb
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net;
     using System.Reflection;
+    using System.ServiceModel.Description;
     using System.Threading;
     using System.Threading.Tasks;
     using Config;
@@ -32,7 +34,7 @@ namespace KustoTest2.DocDb
        where E : class, IGremlinEdge, new()
     {
         private readonly ILogger<GraphDbClient<V, E>> logger;
-        private readonly IBulkExecutor bulkExecutor;
+        private IBulkExecutor bulkExecutor;
         private readonly List<PropertyInfo> vertexProps;
 
         public DocumentCollection Collection { get; }
@@ -63,34 +65,101 @@ namespace KustoTest2.DocDb
             var database = Client.CreateDatabaseQuery().Where(db => db.Id == settings.Db).AsEnumerable().First();
             Collection = Client.CreateDocumentCollectionQuery(database.SelfLink)
                 .Where(c => c.Id == settings.Collection).AsEnumerable().First();
-            bulkExecutor = new GraphBulkExecutor(Client, Collection);
             logger.LogInformation($"Connected to graph db '{Collection.SelfLink}'");
 
-            vertexProps = typeof(V).GetProperties().Where(p => p.CanRead && p.CanWrite).ToList();
+            var vertexInstance = Activator.CreateInstance<V>();
+            vertexProps = vertexInstance.GetFlattenedProperties();
+        }
+
+        public Task<IEnumerable<V>> Query(V fromVertex, string query, CancellationToken cancel)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IEnumerable<E>> GetPath(V fromVertex, V toVertex, CancellationToken cancel)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task BulkInsertVertices(IEnumerable<V> vertices, string partition, CancellationToken cancel)
         {
+            await InitBulkExecutor();
             var objs = vertices.Select(ToVertex).ToList();
             logger.LogInformation($"Adding vertices to partition {partition}...{objs.Count}");
-            await bulkExecutor.BulkImportAsync(objs, true, true, null, null, cancel);
+            int pos = 0;
+            int totalInserted = 0;
+            while (pos < objs.Count)
+            {
+                var batch = objs.Skip(pos).Take(100);
+                var retryCount = 0;
+                var succeed = false;
+                while (!succeed && retryCount < 3)
+                {
+                    try
+                    {
+                        await bulkExecutor.BulkImportAsync(batch, true, true, null, null, cancel);
+                        succeed = true;
+                    }
+                    catch (DocumentClientException ex) when (ex.StatusCode == (HttpStatusCode)429)
+                    {
+                        retryCount++;
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
+                    }
+                }
+
+                totalInserted += batch.Count();
+                logger.LogInformation($"executing batch...{totalInserted}");
+                pos += batch.Count();
+                
+            }
         }
 
         public async Task BulkInsertEdges(IEnumerable<E> edges, string partition, CancellationToken cancel)
         {
+            await InitBulkExecutor();
             var objs = edges.Select(ToEdge).ToList();
             logger.LogInformation($"Adding edges to partition {partition}...{objs.Count}");
             await bulkExecutor.BulkImportAsync(objs, true, true, null, null, cancel);
+            int pos = 0;
+            int totalInserted = 0;
+            while (pos < objs.Count)
+            {
+                var batch = objs.Skip(pos).Take(100);
+                var retryCount = 0;
+                var succeed = false;
+                while (!succeed && retryCount < 3)
+                {
+                    try
+                    {
+                        await bulkExecutor.BulkImportAsync(batch, true, true, null, null, cancel);
+                        succeed = true;
+                    }
+                    catch (DocumentClientException ex) when (ex.StatusCode == (HttpStatusCode)429)
+                    {
+                        retryCount++;
+                        Thread.Sleep(TimeSpan.FromSeconds(1));
+                    }
+                }
+                totalInserted += batch.Count();
+                logger.LogInformation($"executing batch...{totalInserted}");
+                pos += batch.Count();
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+            }
         }
 
         private GremlinVertex ToVertex(V v)
         {
-            var vertex = new GremlinVertex(v.GetId(), v.GetLabel());
-            foreach (var prop in vertexProps)
+            var vertex = new GremlinVertex(v.Id, v.Label);
+            // make sure partition key is added, i.e. if partition key is dcName, vertex.AddProperty("dcName", "***");
+            var propValues = v.GetPropertyValues(vertexProps);
+            if (propValues != null && propValues.Count > 0)
             {
-                vertex.AddProperty(new GremlinVertexProperty(prop.Name, prop.GetValue(v)));
+                foreach (var key in propValues.Keys)
+                {
+                    vertex.AddProperty(key, propValues[key]);
+                }
             }
-
+            
             return vertex;
         }
 
@@ -104,12 +173,28 @@ namespace KustoTest2.DocDb
                 e.GetLabel(),
                 e.GetOutVertexId(),
                 e.GetInVertexId(),
-                outV.GetLabel(),
-                inV.GetLabel(),
-                outV.GetPartition(),
-                inV.GetPartition());
+                outV.Label,
+                inV.Label,
+                outV.PartitionKey,
+                inV.PartitionKey);
 
             return edge;
+        }
+
+        private async Task InitBulkExecutor()
+        {
+            Client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 30;
+            Client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 9;
+            bulkExecutor = new GraphBulkExecutor(Client, Collection);
+            await bulkExecutor.InitializeAsync();
+
+            Client.ConnectionPolicy.RetryOptions.MaxRetryWaitTimeInSeconds = 0;
+            Client.ConnectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
+        }
+
+        public void Dispose()
+        {
+            Client?.Dispose();
         }
     }
 }

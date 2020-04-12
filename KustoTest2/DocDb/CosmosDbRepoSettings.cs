@@ -11,8 +11,8 @@ namespace KustoTest2.DocDb
 
     public class CosmosDbRepoSettings
     {
-        [ModelBind(typeof(DeviceRelation))]
-        public CosmosDbSettings DeviceRelation { get; set; }
+        [ModelBind(typeof(DataCenter))]
+        public CosmosDbSettings DataCenter { get; set; }
 
         [GraphModelBind(typeof(PowerDeviceNode), typeof(PowerDeviceEdge))]
         public CosmosDbSettings DeviceGraph { get; set; }

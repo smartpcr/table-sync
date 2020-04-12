@@ -39,7 +39,7 @@ namespace KustoTest2
                 //    await app.ExecuteAsync(new CancellationToken());
                 //}
 
-                using (var app = host.Services.GetRequiredService<PopulateDeviceAssociations>())
+                using (var app = host.Services.GetRequiredService<PopulateDeviceGraph>())
                 {
                     await app.ExecuteAsync(new CancellationToken());
                 }

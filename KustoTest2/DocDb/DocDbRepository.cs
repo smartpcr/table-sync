@@ -69,6 +69,18 @@ namespace KustoTest2.DocDb
             };
         }
 
+        public async Task<List<T>> QueryAll(CancellationToken cancel)
+        {
+            var query = "select * from c";
+            return await ExecuteQuery(query, cancel);
+        }
+
+        public async Task<List<T>> Query(string whereClause, CancellationToken cancel)
+        {
+            var query = $"select * from c where {whereClause}";
+            return await ExecuteQuery(query, cancel);
+        }
+
         public async Task Query(
             SqlQuerySpec querySpec, 
             Func<List<T>, CancellationToken, Task> onReceived, 
@@ -84,6 +96,23 @@ namespace KustoTest2.DocDb
         {
             var objs = list.Select(item => JObject.FromObject(item, jsonSerializer)).ToList();
             return await docDbClient.UpsertObjects(objs, cancel);
+        }
+
+        private async Task<List<T>> ExecuteQuery(string query, CancellationToken cancel)
+        {
+            logger.LogInformation($"query: {query}");
+            var items = await docDbClient.Query<T>(
+                new SqlQuerySpec(query),
+                new FeedOptions() { EnableCrossPartitionQuery = true },
+                cancel);
+            var list = items.ToList();
+            logger.LogInformation($"total of {list.Count} retrieved from QueryAll");
+            return list;
+        }
+
+        public void Dispose()
+        {
+            docDbClient?.Dispose();
         }
     }
 }

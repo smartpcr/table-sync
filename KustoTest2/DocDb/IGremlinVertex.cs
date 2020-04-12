@@ -6,10 +6,15 @@
 
 namespace KustoTest2.DocDb
 {
+    using System.Collections.Generic;
+    using System.Reflection;
+
     public interface IGremlinVertex
     {
-        string GetId();
-        string GetPartition();
-        string GetLabel();
+        string Id { get; set; }
+        string PartitionKey { get; set; }
+        string Label { get; set; }
+        List<PropertyInfo> GetFlattenedProperties();
+        Dictionary<string, string> GetPropertyValues(List<PropertyInfo> props);
     }
 }

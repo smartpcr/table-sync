@@ -64,7 +64,7 @@ namespace KustoTest2.DocDb
 
         public Task<IEnumerable<E>> GetPath(V fromVertex, V toVertex, CancellationToken cancel)
         {
-            logger.LogInformation($"path from {fromVertex.GetId()} to {toVertex.GetId()}");
+            logger.LogInformation($"path from {fromVertex.Id} to {toVertex.Id}");
             throw new NotImplementedException();
         }
 
@@ -76,6 +76,11 @@ namespace KustoTest2.DocDb
         public async Task BulkInsertEdges(IEnumerable<E> edges, string partition, CancellationToken cancel)
         {
             await client.BulkInsertEdges(edges, partition, cancel);
+        }
+
+        public void Dispose()
+        {
+            client?.Dispose();
         }
     }
 }

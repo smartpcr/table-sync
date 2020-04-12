@@ -75,7 +75,7 @@ namespace KustoTest2
                 new SqlQuerySpec("select * from c"),
                 async (list, cancel) => await UpdateDeviceRelations(tgt, list, cancel),
                 10000,
-                new FeedOptions() { EnableCrossPartitionQuery = true, MaxItemCount = -1 },
+                new FeedOptions() { EnableCrossPartitionQuery = true },
                 token);
         }
 

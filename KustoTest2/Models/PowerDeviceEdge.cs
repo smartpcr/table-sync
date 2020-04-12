@@ -12,21 +12,22 @@ namespace KustoTest2.Models
     {
         public PowerDeviceNode From { get; set; }
         public PowerDeviceNode To { get; set; }
-        public DeviceAssociation Association { get; set; }
+        public AssociationType Association { get; set; }
+
 
         public string GetId()
         {
-            return $"{From.GetId()}-{To.GetId()}";
+            return $"{From.Id}-{To.Id}";
         }
 
         public string GetInVertexId()
         {
-            return From.GetId();
+            return From.Id;
         }
 
         public string GetOutVertexId()
         {
-            return To.GetId();
+            return To.Id;
         }
 
         public string GetLabel()

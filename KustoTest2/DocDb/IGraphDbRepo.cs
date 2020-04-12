@@ -6,11 +6,12 @@
 
 namespace KustoTest2.DocDb
 {
+    using System;
     using System.Collections.Generic;
     using System.Threading;
     using System.Threading.Tasks;
 
-    public interface IGraphDbRepo<V, E>
+    public interface IGraphDbRepo<V, E> : IDisposable
         where V : class, IGremlinVertex, new()
         where E : class, IGremlinEdge, new()
     {
